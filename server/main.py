@@ -1,8 +1,12 @@
 from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
+from flask_cors import CORS
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db.sqlite'
+
+app.config['CORS_HEADERS'] = 'Content-Type'
+CORS(app, origins='*', supports_credentials=True)
 
 db = SQLAlchemy()
 db.init_app(app)
@@ -26,7 +30,7 @@ def index():
 @app.route('/issues', methods=['GET', 'POST'])
 def issues():
     if request.method == 'GET':
-        issues = Issue.query.all()
+        issues = Issue.query.order_by(Issue.id.desc()).all()
         if not issues:
             return jsonify({'message': 'No issues found'}), 404
         
@@ -54,7 +58,7 @@ def issues():
         db.session.add(issue)
         db.session.commit()
 
-        return jsonify({'message': 'Issue created'}), 201
+        return jsonify({'message': 'Issue created', 'data': issue.to_dict()}), 201
 
 @app.route('/issues/<int:id>', methods=['GET', 'PUT', 'DELETE'])
 def issue(id = None):
@@ -68,34 +72,31 @@ def issue(id = None):
             'data': issue.to_dict()
         }), 200
     
-    body = request.get_json()
-
-    if not body:
-        return jsonify({'message': 'Invalid request'}), 400
-    
-    id = body.get('id')
-    title = body.get('title')
-    description = body.get('description')
-    
     issue = Issue.query.filter_by(id=id).first()
     if not issue:
         return jsonify({'message': 'Issue not found'}), 404
 
-    message = None
     if request.method == 'PUT':
+        body = request.get_json()
+
+        if not body:
+            return jsonify({'message': 'Invalid request'}), 400
+
+        title = body.get('title')
+        description = body.get('description')
+
         if not any([title, description]):
             return jsonify({'message': 'Invalid request'}), 400
         
         if title: issue.title = title
         if description: issue.description = description
-        message = 'Issue updated'
+        db.session.commit()
+        return jsonify({'message': 'Issue updated', 'data':issue.to_dict()}), 200
     
     if request.method == 'DELETE':
         db.session.delete(issue)
-        message = 'Issue deleted'
-
-    db.session.commit()
-    return jsonify({'message': message}), 200
+        db.session.commit()
+        return jsonify({'message': 'Issue deleted', 'data': {'id': id}}), 200
 
 if __name__ == '__main__':
     app.run(debug=True, host="0.0.0.0", port=8000)

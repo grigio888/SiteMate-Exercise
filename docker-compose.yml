@@ -5,6 +5,7 @@ services:
     # restart: always
     build:
       context: ./server
+    entrypoint: ["sh", "/app/entrypoint.sh"]
     ports:
       - 8000:8000
     volumes:
@@ -22,6 +23,8 @@ services:
       - ./client:/app
     networks:
       - internal_net
+    depends_on:
+      - server
 
 networks:
   internal_net:
