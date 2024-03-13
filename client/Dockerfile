@@ -1,8 +1,15 @@
 FROM node:20-alpine
 
-WORKDIR /app
 COPY . /app
 
+WORKDIR /app
 RUN npm install
+RUN npm run build
 
-CMD ["npm", "run", "dev", "--", "--host", "--port", "3000"]
+COPY package.json /app/build
+COPY package-lock.json /app/build
+WORKDIR /app/build
+
+RUN npm ci --omit dev
+
+CMD [ "node", "." ]
